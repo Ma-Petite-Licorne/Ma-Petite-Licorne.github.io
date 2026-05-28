@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Centre Équestre · Planning</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #f3ede3; }
+    #root { height: 100%; }
+    @media (min-width: 480px) {
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+      #root {
+        width: 360px;
+        height: 720px;
+        border: 2px solid #1a1a1a;
+        border-radius: 28px;
+        box-shadow: 4px 4px 0 #1a1a1a;
+        overflow: hidden;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script
+    src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+    integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+    crossorigin="anonymous"
+  ></script>
+  <script
+    src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+    integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+    crossorigin="anonymous"
+  ></script>
+  <script
+    src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+    integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+    crossorigin="anonymous"
+  ></script>
+
+  <script type="text/babel">
+    // ── Constants ────────────────────────────────────────────
+
+    const ACCENT = '#f4a574';
+
+    const COLORS = {
+      work:    { bg: '#fde4d3', stroke: '#b25a1f', label: 'Travail' },
+      paddock: { bg: '#dceada', stroke: '#3f6e3f', label: 'Paddock' },
+      care:    { bg: '#e6e0f0', stroke: '#574b7a', label: 'Soins' },
+      course:  { bg: '#fff3b8', stroke: '#8a7320', label: 'Cours' },
+      vet:     { bg: '#f5d4d4', stroke: '#9a3a3a', label: 'Véto' },
+    };
+
+    const HORSES = [
+      { name: 'Quartz', age: '8 ans',  breed: 'Selle Français', emoji: '◐' },
+      { name: 'Bayard', age: '12 ans', breed: 'Pur Sang',        emoji: '◑' },
+      { name: 'Vega',   age: '6 ans',  breed: 'KWPN',            emoji: '◒' },
+      { name: 'Pepito', age: '14 ans', breed: 'Poney',           emoji: '◓' },
+      { name: 'Ulysse', age: '9 ans',  breed: 'Andalou',         emoji: '●' },
+    ];
+
+    // Week: Mon 27 May → Sun 02 Jun
+    const WEEK_DAYS = [
+      { d: 'L', n: 27 },
+      { d: 'M', n: 28 },
+      { d: 'M', n: 29 },
+      { d: 'J', n: 30 },
+      { d: 'V', n: 31 },
+      { d: 'S', n: 1  },
+      { d: 'D', n: 2  },
+    ];
+
+    const TODAY_IDX = 1; // Tuesday
+
+    const HORSE_EVENTS = {
+      Quartz: [
+        { day: 0, h: 9,    dur: 1.5, type: 'work',    label: 'Dressage'  },
+        { day: 1, h: 8,    dur: 3,   type: 'paddock', label: 'Paddock'   },
+        { day: 1, h: 14,   dur: 1,   type: 'course',  label: 'Cours'     },
+        { day: 3, h: 10,   dur: 1,   type: 'work',    label: 'Longe'     },
+        { day: 3, h: 15.5, dur: 0.5, type: 'vet',     label: 'Véto'      },
+        { day: 4, h: 16,   dur: 1,   type: 'course',  label: 'Cours'     },
+        { day: 5, h: 9,    dur: 3,   type: 'paddock', label: 'Paddock'   },
+        { day: 5, h: 14,   dur: 2,   type: 'work',    label: 'Concours'  },
+      ],
+      Bayard: [
+        { day: 0, h: 9,  dur: 2,   type: 'paddock', label: 'Paddock'  },
+        { day: 1, h: 8,  dur: 1,   type: 'care',    label: 'Soins'    },
+        { day: 2, h: 10, dur: 0.5, type: 'vet',     label: 'Véto'     },
+        { day: 3, h: 9,  dur: 2,   type: 'work',    label: 'Dressage' },
+        { day: 5, h: 10, dur: 1.5, type: 'work',    label: 'Obstacle' },
+        { day: 6, h: 9,  dur: 3,   type: 'paddock', label: 'Paddock'  },
+      ],
+      Vega: [
+        { day: 0, h: 10, dur: 1.5, type: 'work',    label: 'Longe'    },
+        { day: 2, h: 8,  dur: 1,   type: 'care',    label: 'Soins'    },
+        { day: 2, h: 14, dur: 1.5, type: 'work',    label: 'Dressage' },
+        { day: 4, h: 9,  dur: 3,   type: 'paddock', label: 'Paddock'  },
+        { day: 5, h: 16, dur: 1,   type: 'course',  label: 'Cours'    },
+      ],
+      Pepito: [
+        { day: 1, h: 10, dur: 1, type: 'course',  label: 'Cours déb.'    },
+        { day: 2, h: 9,  dur: 3, type: 'paddock', label: 'Paddock'        },
+        { day: 3, h: 16, dur: 1, type: 'course',  label: 'Cours poneys'  },
+        { day: 5, h: 10, dur: 1, type: 'course',  label: 'Cours poneys'  },
+        { day: 6, h: 9,  dur: 2, type: 'paddock', label: 'Paddock'        },
+      ],
+      Ulysse: [
+        { day: 0, h: 9,  dur: 1.5, type: 'work',    label: 'Obstacle' },
+        { day: 1, h: 14, dur: 1,   type: 'course',  label: 'Cours'    },
+        { day: 3, h: 9,  dur: 1.5, type: 'work',    label: 'Longe'    },
+        { day: 4, h: 10, dur: 1,   type: 'course',  label: 'Cours'    },
+        { day: 5, h: 8,  dur: 3,   type: 'paddock', label: 'Paddock'  },
+      ],
+    };
+
+    const COURSES = [
+      {
+        time: '10:00', name: 'Cours débutants',
+        riders: 4, max: 6,
+        horses: ['Pepito', 'Ulysse', 'Bayard'],
+        coach: 'L. Martin',
+      },
+      {
+        time: '14:00', name: 'Galop 4 · CSO',
+        riders: 3, max: 4,
+        horses: ['Quartz', 'Ulysse'],
+        coach: 'S. Roux',
+      },
+      {
+        time: '16:00', name: 'Reprise poneys',
+        riders: 6, max: 6,
+        horses: ['Pepito'],
+        coach: 'L. Martin',
+        full: true,
+      },
+      {
+        time: '18:00', name: 'Dressage adulte',
+        riders: 2, max: 5,
+        horses: ['Vega', 'Bayard'],
+        coach: 'S. Roux',
+      },
+    ];
+
+    const INITIAL_TASKS = [
+      { id: 1, label: 'Vérifier le stock de foin', done: false },
+      { id: 2, label: 'Commander des fers pour Bayard', done: false },
+      { id: 3, label: 'Appeler véto — visite annuelle Vega', done: false },
+      { id: 4, label: 'Nettoyer les boxes du fond', done: true },
+      { id: 5, label: 'Préparer le programme du concours samedi', done: false },
+      { id: 6, label: 'Renouveler l\'assurance Pepito', done: true },
+    ];
+
+    // ── Shared atoms ─────────────────────────────────────────
+
+    function StatusBar() {
+      return (
+        <div style={{
+          height: 22,
+          padding: '4px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: 11,
+          fontFamily: "'JetBrains Mono', monospace",
+          color: '#1a1a1a',
+          borderBottom: '1px dashed #c8c2bb',
+          flexShrink: 0,
+        }}>
+          <span>9:41</span>
+          <span>•••</span>
+        </div>
+      );
+    }
+
+    function TabBar({ active, onTab }) {
+      const tabs = [
+        { id: 'planning', label: 'Planning' },
+        { id: 'cours',    label: 'Cours'    },
+        { id: 'chevaux',  label: 'Chevaux'  },
+        { id: 'taches',   label: 'À faire'  },
+      ];
+      return (
+        <div style={{
+          flexShrink: 0,
+          height: 56,
+          background: '#fdfcfa',
+          borderTop: '2px solid #1a1a1a',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          fontSize: 11,
+          fontFamily: "'Patrick Hand', sans-serif",
+        }}>
+          {tabs.map(t => (
+            <div
+              key={t.id}
+              onClick={() => onTab(t.id)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 12,
+                cursor: 'pointer',
+                userSelect: 'none',
+                background: t.id === active ? ACCENT : 'transparent',
+                border: t.id === active
+                  ? '1.5px solid #1a1a1a'
+                  : '1.5px solid transparent',
+                fontWeight: t.id === active ? 700 : 400,
+              }}
+            >
+              {t.label}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Planning (V5 — weekly single-horse grid) ─────────────
+
+    function PlanningView({ horse, onSelectHorse }) {
+      const H_START    = 8;
+      const H_END      = 19;
+      const PX_PER_H   = 22;
+      const TIME_COL   = 28;
+      const GRID_W     = 300; // (360 - 32px margins - 28px time col)
+      const COL_W      = GRID_W / 7;
+      const TOTAL_H    = (H_END - H_START) * PX_PER_H;
+      const HOUR_TICKS = [8, 10, 12, 14, 16, 18];
+      const REST_DAYS  = [2, 6]; // Wednesday, Sunday
+
+      const horseData = HORSES.find(h => h.name === horse);
+      const events    = HORSE_EVENTS[horse] || [];
+      const horseIdx  = HORSES.findIndex(h => h.name === horse);
+
+      const cycleHorse = () =>
+        onSelectHorse(HORSES[(horseIdx + 1) % HORSES.length].name);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+          {/* Horse identity header */}
+          <div style={{
+            padding: '10px 16px 4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div
+              onClick={cycleHorse}
+              title="Changer de cheval"
+              style={{
+                width: 42, height: 42, borderRadius: 21,
+                border: '2px solid #1a1a1a',
+                background: '#f4ede4',
+                display: 'grid', placeItems: 'center',
+                fontSize: 22,
+                boxShadow: '2px 2px 0 #1a1a1a',
+                cursor: 'pointer',
+                userSelect: 'none',
+                flexShrink: 0,
+              }}
+            >
+              {horseData.emoji}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: "'Caveat', cursive",
+                fontSize: 28, fontWeight: 700, lineHeight: 1,
+              }}>
+                {horseData.name}
+              </div>
+              <div style={{
+                fontSize: 10, color: '#7a7268',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: 1,
+              }}>
+                {horseData.age.toUpperCase()}
+                {' · '}
+                {horseData.breed.toUpperCase()}
+              </div>
+            </div>
+            <div style={{
+              width: 32, height: 32, borderRadius: 16,
+              border: '1.5px solid #1a1a1a',
+              display: 'grid', placeItems: 'center',
+              fontSize: 18, fontWeight: 700,
+              cursor: 'pointer', userSelect: 'none',
+            }}>+</div>
+          </div>
+
+          {/* Week navigator */}
+          <div style={{
+            padding: '6px 16px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 11, color: '#7a7268',
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+            <span style={{ cursor: 'pointer', padding: '0 4px' }}>‹</span>
+            <span>SEM. 22 · 27 MAI → 02 JUIN</span>
+            <span style={{ cursor: 'pointer', padding: '0 4px' }}>›</span>
+          </div>
+
+          {/* Day column headers */}
+          <div style={{
+            margin: '0 16px 4px',
+            display: 'grid',
+            gridTemplateColumns: `${TIME_COL}px repeat(7, 1fr)`,
+          }}>
+            <div />
+            {WEEK_DAYS.map((d, i) => {
+              const isToday = i === TODAY_IDX;
+              const isRest  = REST_DAYS.includes(i);
+              return (
+                <div key={i} style={{ textAlign: 'center', padding: '2px 0' }}>
+                  <div style={{
+                    fontSize: 9,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: isRest ? '#bbb3a8' : '#7a7268',
+                    letterSpacing: 1,
+                  }}>
+                    {d.d}
+                  </div>
+                  <div style={{
+                    margin: '2px auto 0',
+                    width: 22, height: 22,
+                    borderRadius: 11,
+                    lineHeight: '20px',
+                    fontFamily: "'Caveat', cursive",
+                    fontSize: 16, fontWeight: 700,
+                    background: isToday ? '#1a1a1a' : 'transparent',
+                    color: isToday ? '#fdfcfa'
+                      : isRest ? '#bbb3a8'
+                      : '#1a1a1a',
+                    border: isToday
+                      ? '2px solid #1a1a1a'
+                      : '1.5px solid transparent',
+                  }}>
+                    {d.n}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Timeline grid */}
+          <div style={{
+            position: 'relative',
+            margin: '0 16px',
+            height: TOTAL_H + 4,
+            borderTop: '1.5px solid #1a1a1a',
+            flexShrink: 0,
+          }}>
+            {/* Horizontal hour lines + labels */}
+            {HOUR_TICKS.map(h => {
+              const top = (h - H_START) * PX_PER_H;
+              return (
+                <React.Fragment key={h}>
+                  {h > H_START && (
+                    <div style={{
+                      position: 'absolute',
+                      left: 0, right: 0, top,
+                      borderTop: '1px dashed #d8d2c8',
+                    }} />
+                  )}
+                  <div style={{
+                    position: 'absolute',
+                    left: 0, top: top - 6,
+                    width: TIME_COL - 4,
+                    textAlign: 'right',
+                    fontSize: 9,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: '#7a7268',
+                  }}>
+                    {h}h
+                  </div>
+                </React.Fragment>
+              );
+            })}
+
+            {/* Vertical day separators */}
+            {WEEK_DAYS.map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                top: 0, bottom: 0,
+                left: TIME_COL + i * COL_W,
+                borderLeft: i === 0
+                  ? '1.5px solid #1a1a1a'
+                  : '1px dashed #e4ddd1',
+              }} />
+            ))}
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0,
+              left: TIME_COL + 7 * COL_W,
+              borderLeft: '1.5px solid #1a1a1a',
+            }} />
+
+            {/* Rest-day fills */}
+            {REST_DAYS.map(di => (
+              <div key={di} style={{
+                position: 'absolute',
+                top: 0, height: TOTAL_H,
+                left: TIME_COL + di * COL_W + 1,
+                width: COL_W - 2,
+                background:
+                  'repeating-linear-gradient(' +
+                  '135deg, #f4ede4 0 4px, transparent 4px 8px)',
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '50%', left: '50%',
+                  transform:
+                    'translate(-50%, -50%) rotate(-90deg)',
+                  fontFamily: "'Caveat', cursive",
+                  fontSize: 14, color: '#9a917f',
+                  whiteSpace: 'nowrap',
+                }}>
+                  repos
+                </div>
+              </div>
+            ))}
+
+            {/* Events */}
+            {events.map((e, i) => {
+              const top    = (e.h - H_START) * PX_PER_H;
+              const height = e.dur * PX_PER_H - 2;
+              const left   = TIME_COL + e.day * COL_W + 2;
+              const width  = COL_W - 4;
+              const c      = COLORS[e.type];
+              return (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top, left, width, height,
+                  background: c.bg,
+                  border: '1.5px solid #1a1a1a',
+                  borderLeft: `3px solid ${c.stroke}`,
+                  borderRadius: 4,
+                  padding: '2px 3px',
+                  fontSize: 9,
+                  lineHeight: 1.1,
+                  fontFamily: "'Patrick Hand', sans-serif",
+                  overflow: 'hidden',
+                  boxShadow: '1px 1px 0 #1a1a1a',
+                }}>
+                  {height >= 26 ? (
+                    <>
+                      <div style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 8, color: '#3a3a3a',
+                      }}>
+                        {e.h}h
+                      </div>
+                      <div style={{ fontWeight: 700 }}>{e.label}</div>
+                    </>
+                  ) : (
+                    <div style={{ fontWeight: 700, fontSize: 8 }}>
+                      {e.label}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Summary footer */}
+          <div style={{
+            margin: '8px 16px 12px',
+            padding: '6px 10px',
+            border: '1.5px dashed #1a1a1a',
+            borderRadius: 8,
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+            background: '#fdfcfa',
+          }}>
+            <span>
+              {events.length} ACTIVITÉ{events.length !== 1 ? 'S' : ''}
+            </span>
+            <span>·</span>
+            <span>{REST_DAYS.length} JOURS DE REPOS</span>
+          </div>
+
+          {/* Horse selector dots */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 8,
+            paddingBottom: 8,
+          }}>
+            {HORSES.map((h, i) => (
+              <button
+                key={h.name}
+                onClick={() => onSelectHorse(h.name)}
+                title={h.name}
+                style={{
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  width: horseIdx === i ? 20 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: horseIdx === i ? '#1a1a1a' : '#c8c2bb',
+                  transition: 'width .2s, background .15s',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Cours (V4 — courses & reservations) ─────────────────
+
+    function CoursView() {
+      const totalRiders = COURSES.reduce((s, c) => s + c.riders, 0);
+      const fullCount   = COURSES.filter(c => c.full).length;
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+          {/* Header */}
+          <div style={{
+            padding: '10px 16px 6px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                color: '#7a7268', letterSpacing: 1,
+              }}>
+                RÉSERVATIONS · MAR 28
+              </div>
+              <div style={{
+                fontSize: 26,
+                fontFamily: "'Caveat', cursive",
+                fontWeight: 700, lineHeight: 1, marginTop: 2,
+              }}>
+                Cours du jour
+              </div>
+            </div>
+            <div style={{
+              width: 36, height: 36, borderRadius: 18,
+              background: ACCENT,
+              border: '2px solid #1a1a1a',
+              display: 'grid', placeItems: 'center',
+              fontSize: 20, fontWeight: 700,
+              boxShadow: '2px 2px 0 #1a1a1a',
+              cursor: 'pointer',
+            }}>+</div>
+          </div>
+
+          {/* Mini stats */}
+          <div style={{
+            padding: '4px 16px 8px',
+            display: 'flex', gap: 8,
+          }}>
+            {[
+              { v: String(COURSES.length), l: 'séances'   },
+              { v: String(totalRiders),    l: 'cavaliers' },
+              { v: String(fullCount),      l: 'complet'   },
+            ].map((s, i) => (
+              <div key={i} style={{
+                flex: 1, padding: '6px 8px',
+                border: '1.5px solid #1a1a1a',
+                borderRadius: 8,
+                background: i === 2 ? ACCENT : '#fff',
+              }}>
+                <div style={{
+                  fontFamily: "'Caveat', cursive",
+                  fontSize: 22, fontWeight: 700, lineHeight: 1,
+                }}>
+                  {s.v}
+                </div>
+                <div style={{
+                  fontSize: 9,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: '#3a3a3a',
+                }}>
+                  {s.l}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Course list */}
+          <div style={{
+            padding: '4px 16px 12px',
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            {COURSES.map((s, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 10,
+                border: '1.5px solid #1a1a1a',
+                borderRadius: 10,
+                background: s.full ? '#f4ede4' : '#fff',
+                padding: 10,
+                opacity: s.full ? 0.85 : 1,
+                boxShadow: '2px 2px 0 #1a1a1a',
+              }}>
+                {/* Time column */}
+                <div style={{
+                  width: 52,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  borderRight: '1.5px dashed #1a1a1a',
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>
+                    {s.time.slice(0, 2)}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#7a7268' }}>
+                    :{s.time.slice(3)}
+                  </div>
+                </div>
+
+                {/* Detail */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline', gap: 6,
+                  }}>
+                    <div style={{
+                      fontFamily: "'Caveat', cursive",
+                      fontSize: 18, fontWeight: 700, lineHeight: 1,
+                    }}>
+                      {s.name}
+                    </div>
+                    {s.full && (
+                      <div style={{
+                        fontSize: 9,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        padding: '1px 6px',
+                        background: '#1a1a1a', color: '#fdfcfa',
+                        borderRadius: 8, flexShrink: 0,
+                      }}>
+                        COMPLET
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{
+                    fontSize: 10, color: '#7a7268', marginTop: 2,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>
+                    ↳ {s.coach}
+                  </div>
+
+                  {/* Rider dots */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    gap: 4, marginTop: 6,
+                  }}>
+                    {Array.from({ length: s.max }).map((_, ri) => (
+                      <div key={ri} style={{
+                        width: 14, height: 14, borderRadius: 7,
+                        border: '1.5px solid #1a1a1a',
+                        background: ri < s.riders ? ACCENT : '#fff',
+                      }} />
+                    ))}
+                    <span style={{
+                      marginLeft: 4, fontSize: 11,
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                      {s.riders}/{s.max}
+                    </span>
+                  </div>
+
+                  {/* Horse chips */}
+                  <div style={{
+                    display: 'flex', flexWrap: 'wrap',
+                    gap: 4, marginTop: 6,
+                  }}>
+                    {s.horses.map((hn, hi) => {
+                      const h = HORSES.find(x => x.name === hn);
+                      return (
+                        <div key={hi} style={{
+                          fontSize: 10, padding: '2px 6px',
+                          border: '1px solid #1a1a1a',
+                          borderRadius: 8,
+                          background: COLORS.course.bg,
+                          fontFamily: "'Patrick Hand', sans-serif",
+                          display: 'flex', alignItems: 'center',
+                          gap: 3,
+                        }}>
+                          <span>{h?.emoji}</span>{hn}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Chevaux (V3 — horse list by day) ─────────────────────
+
+    function fmtTime(h) {
+      const hrs  = Math.floor(h);
+      const mins = Math.round((h - hrs) * 60);
+      return (
+        String(hrs).padStart(2, '0') + ':' +
+        String(mins).padStart(2, '0')
+      );
+    }
+
+    function fmtDur(dur) {
+      if (dur >= 1) return `${dur}h`;
+      return `${Math.round(dur * 60)}min`;
+    }
+
+    function ChevauxView({ onHorseClick }) {
+      const [dayOff, setDayOff] = React.useState(0);
+
+      const dayLabels = ['Hier', "Aujourd'hui", 'Demain'];
+      const daySubLabels = ['LUN. 27 MAI', 'MAR. 28 MAI', 'MER. 29 MAI'];
+
+      const dayIdx = TODAY_IDX + dayOff;
+
+      const items = HORSES.map(h => ({
+        horse: h,
+        activities: (HORSE_EVENTS[h.name] || [])
+          .filter(e => e.day === dayIdx)
+          .map(e => ({
+            time: fmtTime(e.h),
+            type: e.type,
+            label: e.label + ' · ' + fmtDur(e.dur),
+          })),
+      }));
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+          {/* Header */}
+          <div style={{ padding: '10px 16px 6px' }}>
+            <div style={{
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', monospace",
+              color: '#7a7268', letterSpacing: 1,
+            }}>
+              {daySubLabels[dayOff + 1]}
+            </div>
+            <div style={{
+              fontSize: 26,
+              fontFamily: "'Caveat', cursive",
+              fontWeight: 700, lineHeight: 1, marginTop: 2,
+            }}>
+              {dayLabels[dayOff + 1]}
+            </div>
+          </div>
+
+          {/* Day pills */}
+          <div style={{
+            padding: '4px 16px 0',
+            display: 'flex', gap: 6, fontSize: 11,
+          }}>
+            {dayLabels.map((d, i) => {
+              const off = i - 1;
+              return (
+                <div
+                  key={i}
+                  onClick={() => setDayOff(off)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 14,
+                    background: off === dayOff ? ACCENT : 'transparent',
+                    border: '1.5px solid #1a1a1a',
+                    fontWeight: off === dayOff ? 700 : 400,
+                    fontFamily: "'Patrick Hand', sans-serif",
+                    cursor: 'pointer', userSelect: 'none',
+                  }}
+                >
+                  {d}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Horse cards */}
+          <div style={{
+            padding: '12px 16px',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            {items.map((it, i) => (
+              <div
+                key={i}
+                onClick={() => onHorseClick(it.horse.name)}
+                style={{
+                  border: '1.5px solid #1a1a1a',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  background: '#fff',
+                  boxShadow: '2px 2px 0 #1a1a1a',
+                  cursor: 'pointer',
+                }}
+              >
+                {/* Horse id */}
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  gap: 8, marginBottom: 6,
+                }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 14,
+                    border: '1.5px solid #1a1a1a',
+                    background: '#f4ede4',
+                    display: 'grid', placeItems: 'center',
+                    fontSize: 16, flexShrink: 0,
+                  }}>
+                    {it.horse.emoji}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: "'Caveat', cursive",
+                      fontSize: 20, lineHeight: 1, fontWeight: 700,
+                    }}>
+                      {it.horse.name}
+                    </div>
+                    <div style={{
+                      fontSize: 10, color: '#7a7268',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                      {it.horse.age}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: 11, padding: '2px 8px',
+                    borderRadius: 10,
+                    background: '#f4ede4',
+                    border: '1px solid #1a1a1a',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    flexShrink: 0,
+                  }}>
+                    {it.activities.length > 0
+                      ? `${it.activities.length} act.`
+                      : 'repos'}
+                  </div>
+                </div>
+
+                {/* Activities */}
+                {it.activities.length > 0 ? (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 4,
+                  }}>
+                    {it.activities.map((a, ai) => {
+                      const c = COLORS[a.type];
+                      return (
+                        <div key={ai} style={{
+                          display: 'flex', alignItems: 'center',
+                          gap: 8, padding: '4px 8px',
+                          background: c.bg,
+                          borderLeft: `4px solid ${c.stroke}`,
+                          borderRadius: 4, fontSize: 12,
+                        }}>
+                          <span style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontWeight: 700, fontSize: 11,
+                            flexShrink: 0,
+                          }}>
+                            {a.time}
+                          </span>
+                          <span>{a.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{
+                    fontFamily: "'Caveat', cursive",
+                    fontSize: 14, color: '#bbb3a8',
+                    padding: '2px 0',
+                  }}>
+                    — journée libre —
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── À faire (task list) ──────────────────────────────────
+
+    function TodoView() {
+      const [tasks, setTasks] = React.useState(INITIAL_TASKS);
+
+      const toggle = id =>
+        setTasks(prev =>
+          prev.map(t => t.id === id ? { ...t, done: !t.done } : t)
+        );
+
+      const pending = tasks.filter(t => !t.done);
+      const done    = tasks.filter(t =>  t.done);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+          {/* Header */}
+          <div style={{
+            padding: '10px 16px 6px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                color: '#7a7268', letterSpacing: 1,
+              }}>
+                {pending.length} TÂCHE
+                {pending.length !== 1 ? 'S' : ''} EN ATTENTE
+              </div>
+              <div style={{
+                fontSize: 26,
+                fontFamily: "'Caveat', cursive",
+                fontWeight: 700, lineHeight: 1, marginTop: 2,
+              }}>
+                À faire
+              </div>
+            </div>
+            <div style={{
+              width: 36, height: 36, borderRadius: 18,
+              background: ACCENT,
+              border: '2px solid #1a1a1a',
+              display: 'grid', placeItems: 'center',
+              fontSize: 20, fontWeight: 700,
+              boxShadow: '2px 2px 0 #1a1a1a',
+              cursor: 'pointer',
+            }}>+</div>
+          </div>
+
+          {/* Tasks */}
+          <div style={{
+            padding: '8px 16px 12px',
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            {[...pending, ...done].map(task => (
+              <div
+                key={task.id}
+                onClick={() => toggle(task.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px',
+                  border: '1.5px solid #1a1a1a',
+                  borderRadius: 10,
+                  background: task.done ? '#f4ede4' : '#fff',
+                  boxShadow: task.done ? 'none' : '2px 2px 0 #1a1a1a',
+                  opacity: task.done ? 0.7 : 1,
+                  cursor: 'pointer', userSelect: 'none',
+                  transition: 'opacity .15s, background .15s',
+                }}
+              >
+                <div style={{
+                  width: 20, height: 20, borderRadius: 10,
+                  border: '2px solid #1a1a1a',
+                  background: task.done ? '#1a1a1a' : '#fff',
+                  display: 'grid', placeItems: 'center',
+                  flexShrink: 0,
+                  fontSize: 11, color: '#fff',
+                  fontWeight: 700,
+                }}>
+                  {task.done && '✓'}
+                </div>
+                <span style={{
+                  fontFamily: "'Patrick Hand', sans-serif",
+                  fontSize: 14,
+                  textDecoration: task.done ? 'line-through' : 'none',
+                  color: task.done ? '#7a7268' : '#1a1a1a',
+                }}>
+                  {task.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Color legend */}
+          <div style={{
+            margin: '4px 16px 12px',
+            padding: '10px 12px',
+            border: '1.5px dashed #1a1a1a',
+            borderRadius: 10,
+          }}>
+            <div style={{
+              fontSize: 10,
+              fontFamily: "'JetBrains Mono', monospace",
+              color: '#7a7268', letterSpacing: 1,
+              marginBottom: 8,
+            }}>
+              CODE COULEUR
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 6,
+            }}>
+              {Object.entries(COLORS).map(([k, c]) => (
+                <div key={k} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 8px',
+                  background: c.bg,
+                  borderLeft: `4px solid ${c.stroke}`,
+                  border: '1px solid #1a1a1a',
+                  borderRadius: 5,
+                  fontSize: 11,
+                  fontFamily: "'Patrick Hand', sans-serif",
+                }}>
+                  {c.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── App root ─────────────────────────────────────────────
+
+    function App() {
+      const [tab,   setTab]   = React.useState('planning');
+      const [horse, setHorse] = React.useState('Quartz');
+
+      const handleHorseClick = name => {
+        setHorse(name);
+        setTab('planning');
+      };
+
+      return (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          background: '#fdfcfa',
+          display: 'flex',
+          flexDirection: 'column',
+          fontFamily: "'Kalam', sans-serif",
+          color: '#1a1a1a',
+          overflow: 'hidden',
+        }}>
+          <StatusBar />
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            {tab === 'planning' && (
+              <PlanningView
+                horse={horse}
+                onSelectHorse={setHorse}
+              />
+            )}
+            {tab === 'cours'   && <CoursView />}
+            {tab === 'chevaux' && (
+              <ChevauxView onHorseClick={handleHorseClick} />
+            )}
+            {tab === 'taches'  && <TodoView />}
+          </div>
+          <TabBar active={tab} onTab={setTab} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
