@@ -285,21 +285,24 @@
 
     .cat-body {
       display: flex;
+      flex-direction: column;
       gap: 1.5rem;
-      align-items: flex-start;
+    }
+
+    .cat-illustrations {
+      display: flex;
+      flex-direction: row;
+      gap: .75rem;
     }
 
     .cat-illustration {
-      width: 320px;
-      flex-shrink: 0;
-      max-height: 480px;
+      flex: 1;
+      max-height: 360px;
       object-fit: contain;
       border-radius: 10px;
       background: var(--white);
       border: 1px solid var(--border);
       padding: .5rem;
-      position: sticky;
-      top: 1rem;
     }
 
     .cat-content {
@@ -439,13 +442,8 @@
         display: inline;
       }
 
-      .cat-body {
+      .cat-illustrations {
         flex-direction: column;
-      }
-
-      .cat-illustration {
-        width: 100%;
-        position: static;
       }
     }
   </style>
@@ -536,7 +534,10 @@
               </span>
             </div>
             <div class="cat-body">
-              <img v-if="cat.image" :src="cat.image" :alt="cat.label" class="cat-illustration" />
+              <div v-if="cat.images" class="cat-illustrations">
+                <img v-for="(img, i) in cat.images" :key="i"
+                  :src="img" :alt="cat.label" class="cat-illustration" />
+              </div>
 
               <div class="cat-content">
                 <!-- Category with subcategories -->
@@ -673,7 +674,10 @@
         id: 'guide-materiel',
         icon: '📖',
         label: 'Guide du matériel',
-        image: '/Glossaire Équestre/équipement d\'équitation essentiel.webp',
+        images: [
+          '/Glossaire Équestre/équipement d\'équitation essentiel.webp',
+          '/Glossaire Équestre/équipement cheval.jpg',
+        ],
         subcategories: [
           {
             label: '1. Matériel de pansage — L\'hygiène',
